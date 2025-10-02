@@ -1,51 +1,51 @@
-🎬 Movie Recommendation Assistant
+# 🎬 Movie Recommendation Assistant
 
-This project demonstrates how to build a semantic search + AI chat assistant that helps users find movies based on recommendations.
+This project demonstrates how to build a **semantic search + AI chat assistant** that helps users find movies based on recommendations.  
 
-It uses:
+It uses:  
+- [Qdrant](https://qdrant.tech/) — vector database for storing & searching embeddings  
+- [SentenceTransformers](https://www.sbert.net/) — to convert text into embeddings  
+- [OpenAI Python SDK](https://github.com/openai/openai-python) — to interact with a **local LLaMA model** running with an OpenAI-compatible API (e.g., [Ollama](https://ollama.ai/) or [llama.cpp server](https://github.com/ggerganov/llama.cpp))  
 
-Qdrant
- — vector database for storing & searching embeddings
+---
 
-SentenceTransformers
- — to convert text into embeddings
+## 🚀 Features
+- Store and search text embeddings (movie genres, tags, descriptions, etc.) in Qdrant  
+- Query similar movies using semantic search  
+- Use a local LLaMA model to **chat with an AI assistant** that recommends movies  
 
-OpenAI Python SDK
- — to interact with a local LLaMA model running with an OpenAI-compatible API (e.g., Ollama
- or llama.cpp server
-)
+---
 
-🚀 Features
+## 🛠️ Installation
 
-Store and search text embeddings (movie genres, tags, descriptions, etc.) in Qdrant
-
-Query similar movies using semantic search
-
-Use a local LLaMA model to chat with an AI assistant that recommends movies
-
-🛠️ Installation
-1. Install dependencies
+### 1. Install dependencies
+```bash
 pip install qdrant-client sentence-transformers openai
+```
 
-2. Run Qdrant locally
-
+### 2. Run Qdrant locally
 Using Docker:
-
+```bash
 docker run -p 6333:6333 qdrant/qdrant
+```
 
-3. Run a local LLaMA model
-
-If using Ollama:
-
+### 3. Run a local LLaMA model
+If using **Ollama**:
+```bash
 ollama run llama3
+```
 
-
-If using llama.cpp server:
-
+If using **llama.cpp server**:
+```bash
 ./server -m models/llama-3.2-3B-Instruct.Q6_K4_2024-09-24.gguf --port 8080
+```
 
-📂 Example Usage
-1. Generate embeddings and store in Qdrant
+---
+
+## 📂 Example Usage
+
+### 1. Generate embeddings and store in Qdrant
+```python
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
@@ -66,16 +66,20 @@ points = [
 ]
 
 client.upsert(collection_name="movies", points=points)
+```
 
-2. Query with semantic search
+### 2. Query with semantic search
+```python
 query = "space adventures"
 query_vector = encoder.encode([query]).tolist()[0]
 
 results = client.search(collection_name="movies", query_vector=query_vector, limit=3)
 for res in results:
     print(res.payload["genre"], res.score)
+```
 
-3. Chat with local LLaMA model
+### 3. Chat with local LLaMA model
+```python
 from openai import OpenAI
 
 client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-no-key")
@@ -91,22 +95,26 @@ completion = client.chat.completions.create(
 )
 
 print(completion.choices[0].message["content"])
+```
 
-⚙️ Configuration
+---
 
-Qdrant default port: 6333
+## ⚙️ Configuration
+- **Qdrant** default port: `6333`  
+- **Local LLaMA server** default port: `8080` (Ollama uses `11434`)  
+- `api_key` can be any dummy string if running locally  
 
-Local LLaMA server default port: 8080 (Ollama uses 11434)
+---
 
-api_key can be any dummy string if running locally
+## 📌 Notes
+- Adjust `model` name to match your local LLaMA model file  
+- If you’re using Ollama, change `base_url` to:
+  ```python
+  base_url="http://127.0.0.1:11434/v1"
+  ```
+- If you want cloud-hosted models, you can swap LLaMA for OpenAI GPT models  
 
-📌 Notes
+---
 
-Adjust model name to match your local LLaMA model file
-
-If you’re using Ollama, change base_url to:
-
-base_url="http://127.0.0.1:11434/v1"
-
-
-If you want cloud-hosted models, you can swap LLaMA for OpenAI GPT models
+## 🧑‍💻 License
+MIT License  
