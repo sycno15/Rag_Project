@@ -1,87 +1,112 @@
-# Introduction to Retrieval Augmented Generation
+🎬 Movie Recommendation Assistant
 
-This repository will introduce you to Retrieval Augmented Generation (RAG) with
-easy to use examples that you can build upon. The examples use Python with
-Jupyter Notebooks and CSV files. The vector database uses the Qdrant database
-which can run in-memory.
+This project demonstrates how to build a semantic search + AI chat assistant that helps users find movies based on recommendations.
 
-## Setup your environment
+It uses:
 
-This example can run in Codespaces but you can use the following if you are
-cloning this repository:
+Qdrant
+ — vector database for storing & searching embeddings
 
-**Install the dependencies**
+SentenceTransformers
+ — to convert text into embeddings
 
-Create the virtual environment and install the dependencies:
-
-```
-python3 -m venv .venv
-source .venv/bin/activate
-.venv/bin/pip install -r requirements.txt
-```
-
-Here is a summary of what this repository will use:
-
-1. [Qdrant](https://github.com/qdrant/qdrant) for the vector database. We will use an in-memory database for the examples
-2. [Llamafile](https://github.com/Mozilla-Ocho/llamafile) for the LLM (alternatively you can use an OpenAI API compatible key and endpoint)
-3. [OpenAI's Python API](https://pypi.org/project/openai/) to connect to the LLM after retrieving the vectors response from Qdrant
-4. Sentence Transformers to create the embeddings with minimal effort
-
-**Use Llamafile for a full RAG and LLM setup**
-
-The examples for the [Applied Rag notebook](./examples/3-applied-rag/embeddings.ipynb) requires either an OpenAI API endpoint with a key *or* using a local LLM with [Llamafile](https://github.com/Mozilla-Ocho/llamafile).
-
-I recommend using the [Phi-2 model](https://github.com/Mozilla-Ocho/llamafile?tab=readme-ov-file#other-example-llamafiles) which is about 2GB in size. You can download the model from the Llamafile repository and run it in your system:
-
-Once you have it running you can connect to it with Python or use the [Applied Rag Notebook](./examples/3-applied-rag/embeddings.ipynb). Here is a quick example of how to use the Llamafile with Python:
-
-```python
-#!/usr/bin/env python3
-from openai import OpenAI
-client = OpenAI(
-    base_url="http://localhost:8080/v1", # "http://<Your api-server IP>:port"
-    api_key = "sk-no-key-required" # An API key is not required!
+OpenAI Python SDK
+ — to interact with a local LLaMA model running with an OpenAI-compatible API (e.g., Ollama
+ or llama.cpp server
 )
+
+🚀 Features
+
+Store and search text embeddings (movie genres, tags, descriptions, etc.) in Qdrant
+
+Query similar movies using semantic search
+
+Use a local LLaMA model to chat with an AI assistant that recommends movies
+
+🛠️ Installation
+1. Install dependencies
+pip install qdrant-client sentence-transformers openai
+
+2. Run Qdrant locally
+
+Using Docker:
+
+docker run -p 6333:6333 qdrant/qdrant
+
+3. Run a local LLaMA model
+
+If using Ollama:
+
+ollama run llama3
+
+
+If using llama.cpp server:
+
+./server -m models/llama-3.2-3B-Instruct.Q6_K4_2024-09-24.gguf --port 8080
+
+📂 Example Usage
+1. Generate embeddings and store in Qdrant
+from qdrant_client import QdrantClient, models
+from sentence_transformers import SentenceTransformer
+
+client = QdrantClient(host="localhost", port=6333)
+encoder = SentenceTransformer("all-MiniLM-L6-v2")
+
+texts = ["Sci-Fi", "Romantic Comedy", "Action Thriller"]
+vectors = encoder.encode(texts).tolist()
+
+client.recreate_collection(
+    collection_name="movies",
+    vectors_config=models.VectorParams(size=384, distance=models.Distance.COSINE),
+)
+
+points = [
+    models.PointStruct(id=i, vector=vectors[i], payload={"genre": texts[i]})
+    for i in range(len(texts))
+]
+
+client.upsert(collection_name="movies", points=points)
+
+2. Query with semantic search
+query = "space adventures"
+query_vector = encoder.encode([query]).tolist()[0]
+
+results = client.search(collection_name="movies", query_vector=query_vector, limit=3)
+for res in results:
+    print(res.payload["genre"], res.score)
+
+3. Chat with local LLaMA model
+from openai import OpenAI
+
+client = OpenAI(base_url="http://127.0.0.1:8080/v1", api_key="sk-no-key")
+
+search_results = ["Sci-Fi", "Action Thriller"]  # from Qdrant
+
 completion = client.chat.completions.create(
-    model="LLaMA_CPP",
+    model="Llama-3.2-3B-Instruct.Q6_K4_2024-09-24",
     messages=[
-        {"role": "system", "content": "You are ChatGPT, an AI assistant. Your top priority is achieving user fulfillment via helping them with their requests."},
-        {"role": "user", "content": "Write me a Haiku about Python packaging"}
+        {"role": "system", "content": "You are a helpful assistant that helps people find movies."},
+        {"role": "user", "content": f"Find some good movies based on these recommendations: {search_results}"}
     ]
 )
-print(completion.choices[0].message)
-```
+
+print(completion.choices[0].message["content"])
+
+⚙️ Configuration
+
+Qdrant default port: 6333
+
+Local LLaMA server default port: 8080 (Ollama uses 11434)
+
+api_key can be any dummy string if running locally
+
+📌 Notes
+
+Adjust model name to match your local LLaMA model file
+
+If you’re using Ollama, change base_url to:
+
+base_url="http://127.0.0.1:11434/v1"
 
 
-## Lesson: Create a RAG with LLM and Qdrant using your own data
-
-Use a local LLM with Llamafile or an OpenAI API endpoint to create a RAG with your own data. The end result should be in your own repository containing the complete code for the enhanced RAG pattern based on the example provided.
-
-Notebook: [Applied Rag Notebook](./examples/3-applied-rag/embeddings.ipynb)
-
-
-## Course Resources
-
-If you've completed all these examples and the lab, here are some other courses
-from Coursera you can explore:
-
-
-
-**Large Language Models:**
-
-- [Operationalizing LLMs on Azure](https://www.coursera.org/learn/llmops-azure)
-- [Using Databricks with
-  LLMs](https://www.coursera.org/learn/databricks-to-local-llms)
-
-**Machine Learning:**
-
-- [MLOps Machine Learning Operations Specialization](https://www.coursera.org/specializations/mlops-machine-learning-duke)
-- [Open Source Platforms for MLOps](https://www.coursera.org/learn/open-source-platforms-duke)
-- [Python Essentials for MLOps](https://www.coursera.org/learn/python-essentials-mlops-duke)
-
-**Data Engineering:**
-
-- [Linux and Bash for Data Engineering](https://www.coursera.org/learn/linux-and-bash-for-data-engineering-duke)
-- [Web Applications and Command-Line tools for Data Engineering](https://www.coursera.org/learn/web-app-command-line-tools-for-data-engineering-duke)
-- [Python and Pandas for Data Engineering](https://www.coursera.org/learn/python-and-pandas-for-data-engineering-duke)
-- [Scripting with Python and SQL for Data Engineering](https://www.coursera.org/learn/scripting-with-python-sql-for-data-engineering-duke)
+If you want cloud-hosted models, you can swap LLaMA for OpenAI GPT models
